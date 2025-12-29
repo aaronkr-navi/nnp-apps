@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nurse Navigators Pro - Internal OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gold: #B8860B;
+            --gold-highlight: #FFD700;
+            --charcoal: #1A1A1A;
+            --silver: #A9A9A9;
+            --bg-light: #F8F9FA;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            color: #333;
+            background-color: var(--bg-light);
+        }
+
+        .font-serif {
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        /* NAVIGATION STATES */
+        .active-section {
+            background-color: var(--primary-gold) !important;
+            color: var(--charcoal) !important;
+            font-weight: bold;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transform: translateX(4px);
+        }
+
+        .section-content {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .section-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* LOGIN ANIMATIONS */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* CONTRACT / DOCUMENT STYLING (Inherited from contracts.html) */
+        .document-wrapper {
+            background-color: #fff;
+            padding: 1in;
+            margin-bottom: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            position: relative;
+            border-top: 5px solid var(--charcoal);
+            font-size: 11pt;
+            line-height: 1.6;
+            max-width: 8.5in;
+            margin-left: auto;
+            margin-right: auto;
+            display: none; /* Hidden by default until printed or viewed specifically */
+        }
+
+        .document-wrapper.view-mode {
+            display: block;
+        }
+
+        .text-logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 22pt;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+
+        .contract-h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 24pt;
+            text-align: center;
+            text-transform: uppercase;
+            margin: 0 0 10px 0;
+            color: #000;
+        }
+
+        .contract-subtitle {
+            text-align: center;
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 14pt;
+            color: #555;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .contract-h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 15pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 35px;
+            border-bottom: 1px solid #ddd;
+            color: #222;
+        }
+
+        .contract-p { margin-bottom: 18px; text-align: justify; }
+        .contract-ul { list-style: none; padding-left: 0; margin-bottom: 20px; }
+        .contract-li { padding-left: 2em; position: relative; margin-bottom: 10px; }
+        .contract-li::before { content: "•"; position: absolute; left: 0.5em; color: var(--primary-gold); }
+
+        .signature-block { margin-top: 60px; display: flex; gap: 50px; }
+        .sig-col { flex: 1; }
+        .sig-line { border-bottom: 1px solid #000; margin-top: 40px; margin-bottom: 8px; }
+        .sig-label { font-size: 9pt; text-transform: uppercase; color: #666; }
+
+        /* PRINT LOGIC */
+        @media print {
+            body * { visibility: hidden; }
+            #sidebar, #login-overlay, header { display: none !important; }
+            .no-print { display: none !important; }
+            
+            /* Only show the specific printable area */
+            .print-visible, .print-visible * {
+                visibility: visible;
+            }
+            .print-visible {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden bg-gray-100">
+
+    <!-- STEP 1: LOGIN GATEKEEPER -->
+    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1A1A] text-white">
+        <div class="w-full max-w-md p-8 bg-[#1A1A1A] border-2 border-[#B8860B] rounded-lg shadow-[0_0_50px_rgba(184,134,11,0.3)]">
+            <div class="text-center mb-8">
+                <i data-lucide="shield-check" class="w-16 h-16 text-[#B8860B] mx-auto mb-4"></i>
+                <h1 class="text-3xl font-serif font-bold tracking-widest text-[#B8860B] uppercase">Nurse Navigators Pro</h1>
+                <p class="text-xs tracking-[0.2em] text-gray-400 mt-2">Internal Operating System</p>
+            </div>
+            <form id="login-form" onsubmit="event.preventDefault(); checkLogin();" class="space-y-6">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-[#B8860B] mb-2">Username</label>
+                    <input type="text" id="username" class="w-full bg-black/50 border border-[#B8860B]/50 p-3 rounded text-white focus:outline-none focus:border-[#B8860B] transition-colors" placeholder="Enter ID">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-[#B8860B] mb-2">Password</label>
+                    <input type="password" id="password" class="w-full bg-black/50 border border-[#B8860B]/50 p-3 rounded text-white focus:outline-none focus:border-[#B8860B] transition-colors" placeholder="Enter Key">
+                </div>
+                <button type="submit" class="w-full bg-[#B8860B] text-[#1A1A1A] font-bold py-3 rounded hover:bg-white transition-all duration-300 uppercase tracking-wider">
+                    Access System
+                </button>
+            </form>
+            <p id="login-error" class="text-red-500 text-xs text-center mt-4 hidden">Access Denied. Invalid Credentials.</p>
+        </div>
+    </div>
+
+    <!-- STEP 2: SIDEBAR & LOGO INTEGRATION -->
+    <aside id="sidebar" class="w-72 bg-[#1A1A1A] text-white flex flex-col transition-all duration-300 border-r border-[#B8860B] shadow-2xl z-20 no-print">
+        <!-- Logo Header: Pure Black Background -->
+        <div class="p-6 bg-black border-b border-[#B8860B]/30 flex flex-col items-center text-center">
+            <img src="logo.jpg" class="w-full h-auto max-w-[200px] mx-auto block mb-2" alt="Nurse Navigators Pro">
+            <p class="text-[10px] opacity-60 tracking-widest mt-1 uppercase text-[#A9A9A9]">ListerKeys LLC dba</p>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="mt-4 px-2 flex-1 overflow-y-auto overflow-x-hidden space-y-1">
+            <button onclick="showSection('dashboard')" id="btn-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-lg text-[#A9A9A9] hover:bg-white/5 hover:text-white">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i><span>Executive Dashboard</span>
+            </button>
+            <button onclick="showSection('services')" id="btn-services" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-lg text-[#A9A9A9] hover:bg-white/5 hover:text-white">
+                <i data-lucide="layers" class="w-4 h-4"></i><span>Service Catalog</span>
+            </button>
+            <button onclick="showSection('contracts')" id="btn-contracts" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-lg text-[#A9A9A9] hover:bg-white/5 hover:text-white">
+                <i data-lucide="file-signature" class="w-4 h-4"></i><span>Legal Contracts</span>
+            </button>
+            <button onclick="showSection('financials')" id="btn-financials" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-lg text-[#A9A9A9] hover:bg-white/5 hover:text-white">
+                <i data-lucide="trending-up" class="w-4 h-4"></i><span>Financials</span>
+            </button>
+            <div class="my-4 border-t border-[#B8860B]/20"></div>
+            <p class="px-4 text-[10px] uppercase text-[#B8860B]/70 font-bold mb-2">Brand Assets</p>
+            <button onclick="showSection('brand')" id="btn-brand" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-lg text-[#A9A9A9] hover:bg-white/5 hover:text-white">
+                <i data-lucide="palette" class="w-4 h-4"></i><span>Brand Standards</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-[#B8860B]/20 bg-black/20 shrink-0">
+            <div class="flex items-center gap-3 px-4 py-3 text-xs text-[#B8860B]">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                System Operational
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 overflow-y-auto flex flex-col relative h-full">
+        <!-- Top Bar -->
+        <header class="sticky top-0 bg-white border-b border-gray-200 z-10 px-6 py-4 flex justify-between items-center shadow-sm no-print">
+            <div class="flex items-center gap-4">
+                <h2 class="text-[#1A1A1A] font-serif font-bold text-lg uppercase tracking-wider">Internal Operating System</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-xs uppercase tracking-[0.2em] text-[#A9A9A9] font-bold hidden md:block italic">Clinical Stewardship. Absolute Assurance.</span>
+                <button onclick="logout()" class="p-2 hover:bg-red-50 text-red-500 rounded transition-colors" title="Logout">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- CONTENT CONTAINER -->
+        <div class="flex-1 p-8 overflow-y-auto">
+            
+            <!-- STEP 5: DASHBOARD & STRATEGY -->
+            <div id="dashboard" class="section-content max-w-6xl mx-auto">
+                <div class="mb-8 border-l-4 border-[#B8860B] pl-6">
+                    <h2 class="text-3xl font-serif font-bold text-[#1A1A1A] mb-2">Executive Dashboard</h2>
+                    <p class="text-gray-500 italic">Strategic Overview 2025-2026</p>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                    <div class="bg-white p-6 rounded-lg shadow border-t-4 border-[#B8860B]">
+                        <div class="text-gray-500 text-xs uppercase tracking-widest font-bold">Services Active</div>
+                        <div class="text-3xl font-bold text-[#1A1A1A] mt-2">125+</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow border-t-4 border-[#B8860B]">
+                        <div class="text-gray-500 text-xs uppercase tracking-widest font-bold">SBUs Operational</div>
+                        <div class="text-3xl font-bold text-[#1A1A1A] mt-2">6</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow border-t-4 border-[#B8860B]">
+                        <div class="text-gray-500 text-xs uppercase tracking-widest font-bold">Entry Fee</div>
+                        <div class="text-3xl font-bold text-[#1A1A1A] mt-2">$29</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow border-t-4 border-[#B8860B]">
+                        <div class="text-gray-500 text-xs uppercase tracking-widest font-bold">Prem. Retainer</div>
+                        <div class="text-3xl font-bold text-[#1A1A1A] mt-2">$12k</div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-lg shadow-sm mb-8">
+                    <h3 class="text-xl font-bold text-[#B8860B] mb-4 font-serif uppercase">Executive Summary</h3>
+                    <p class="mb-4 leading-relaxed text-gray-700">Nurse Navigators Pro is a comprehensive healthcare coordination and in-home clinical services firm serving UHNW families, senior living facilities, and healthcare networks across Arizona. Our six Strategic Business Units (SBUs) generate 125+ services spanning personal care, clinical governance, disease management, B2B consulting, technology, and professional education.</p>
+                    <p class="leading-relaxed text-gray-700"><strong>Business Model:</strong> Hybrid revenue combining hourly service delivery ($29–$65/hour), retainer-based governance ($1,500–$12,000/month), one-time assessments ($450–$5,000), and subscription services ($29/month).</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-8 rounded-lg shadow-sm">
+                        <h3 class="text-lg font-bold text-[#1A1A1A] mb-4 uppercase border-b pb-2">Market Opportunity</h3>
+                        <ul class="space-y-3 text-sm text-gray-600">
+                            <li class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-[#B8860B] mt-0.5"></i><span><strong>Private Clients:</strong> UHNW families seeking "Absolute Assurance".</span></li>
+                            <li class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-[#B8860B] mt-0.5"></i><span><strong>Healthcare Systems:</strong> Readmission prevention & discharge coordination.</span></li>
+                            <li class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-[#B8860B] mt-0.5"></i><span><strong>Facilities:</strong> Regulatory compliance & interim leadership ($4.5k+).</span></li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-8 rounded-lg shadow-sm">
+                        <h3 class="text-lg font-bold text-[#1A1A1A] mb-4 uppercase border-b pb-2">Competitive Advantage</h3>
+                        <ul class="space-y-3 text-sm text-gray-600">
+                            <li class="flex items-start gap-2"><i data-lucide="shield" class="w-4 h-4 text-[#B8860B] mt-0.5"></i><span>Trademarked protocols (Meridian Survey™, Stella Tier™).</span></li>
+                            <li class="flex items-start gap-2"><i data-lucide="shield" class="w-4 h-4 text-[#B8860B] mt-0.5"></i><span>Integrated B2B + B2C model reduces churn.</span></li>
+                            <li class="flex items-start gap-2"><i data-lucide="shield" class="w-4 h-4 text-[#B8860B] mt-0.5"></i><span>Clinical governance prevents costly hospitalizations.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: INTERACTIVE SERVICE CATALOG -->
+            <div id="services" class="section-content max-w-7xl mx-auto">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                    <div>
+                        <h2 class="text-3xl font-serif font-bold text-[#1A1A1A]">Service Catalog</h2>
+                        <p class="text-gray-500 italic text-sm">Interactive Menu of Services</p>
+                    </div>
+                    <!-- Filter Bar -->
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filterServices('all')" class="px-4 py-2 bg-[#1A1A1A] text-white text-xs font-bold uppercase rounded hover:bg-[#B8860B] transition-colors filter-btn active-filter" data-filter="all">All Services</button>
+                        <button onclick="filterServices('home')" class="px-4 py-2 bg-gray-200 text-gray-700 text-xs font-bold uppercase rounded hover:bg-[#B8860B] hover:text-white transition-colors filter-btn" data-filter="home">Home Care</button>
+                        <button onclick="filterServices('gov')" class="px-4 py-2 bg-gray-200 text-gray-700 text-xs font-bold uppercase rounded hover:bg-[#B8860B] hover:text-white transition-colors filter-btn" data-filter="gov">Governance</button>
+                        <button onclick="filterServices('disease')" class="px-4 py-2 bg-gray-200 text-gray-700 text-xs font-bold uppercase rounded hover:bg-[#B8860B] hover:text-white transition-colors filter-btn" data-filter="disease">Disease Mgmt</button>
+                        <button onclick="filterServices('tech')" class="px-4 py-2 bg-gray-200 text-gray-700 text-xs font-bold uppercase rounded hover:bg-[#B8860B] hover:text-white transition-colors filter-btn" data-filter="tech">Tech & Edu</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="service-grid">
+                    <!-- Cards Extracted & Tagged -->
+                    
+                    <!-- SBU 1: Home Care -->
+                    <div class="bg-white border border-[#B8860B]/20 rounded-lg p-6 hover:shadow-lg transition-all service-card relative overflow-hidden" data-category="home">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-[#B8860B]"></div>
+                        <span class="inline-block bg-[#B8860B] text-white text-[10px] font-bold px-2 py-1 rounded mb-3">PC-HYGIENE-001</span>
+                        <h3 class="font-serif text-lg font-bold text-[#1A1A1A] mb-2">Personal Hygiene & Bathing</h3>
+                        <div class="text-2xl font-bold text-[#B8860B] mb-4 pb-4 border-b border-dashed border-gray-200">$48/hour <span class="text-xs font-normal text-gray-400">(4-hr min)</span></div>
+                        <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Includes:</h4>
+                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                            <li>• Full body wash & hair shampooing</li>
+                            <li>• Nail care & oral hygiene</li>
+                            <li>• Skin inspection & grooming</li>
+                        </ul>
+                        <div class="bg-[#B8860B]/5 p-3 rounded border-l-2 border-[#B8860B] text-xs italic text-gray-600">
+                            Falls in bathrooms cause 80% of home hospitalizations. Our trained caregivers prevent catastrophic incidents.
+                        </div>
+                    </div>
+
+                    <!-- SBU 2: Governance -->
+                    <div class="bg-white border border-[#B8860B]/20 rounded-lg p-6 hover:shadow-lg transition-all service-card relative overflow-hidden" data-category="gov">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-[#B8860B]"></div>
+                        <span class="inline-block bg-[#1A1A1A] text-white text-[10px] font-bold px-2 py-1 rounded mb-3">RET-02</span>
+                        <h3 class="font-serif text-lg font-bold text-[#1A1A1A] mb-2">Astris Protocol™ Retainer</h3>
+                        <div class="text-2xl font-bold text-[#B8860B] mb-4 pb-4 border-b border-dashed border-gray-200">$4,500/month</div>
+                        <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Includes:</h4>
+                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                            <li>• Weekly onsite RN visit</li>
+                            <li>• Physician advocacy (2/mo)</li>
+                            <li>• Hospital discharge presence</li>
+                            <li>• Interdisciplinary coordination</li>
+                        </ul>
+                        <div class="bg-[#B8860B]/5 p-3 rounded border-l-2 border-[#B8860B] text-xs italic text-gray-600">
+                            The quarterback model. Active management for chronic conditions with full interdisciplinary coordination.
+                        </div>
+                    </div>
+
+                    <!-- SBU 4: B2B/Gov -->
+                    <div class="bg-white border border-[#B8860B]/20 rounded-lg p-6 hover:shadow-lg transition-all service-card relative overflow-hidden" data-category="gov">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-[#B8860B]"></div>
+                        <span class="inline-block bg-[#1A1A1A] text-white text-[10px] font-bold px-2 py-1 rounded mb-3">B2B-01</span>
+                        <h3 class="font-serif text-lg font-bold text-[#1A1A1A] mb-2">The Solstice Audit™</h3>
+                        <div class="text-2xl font-bold text-[#B8860B] mb-4 pb-4 border-b border-dashed border-gray-200">$4,500 <span class="text-xs font-normal text-gray-400">per license</span></div>
+                        <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Includes:</h4>
+                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                            <li>• Mock ADHS survey</li>
+                            <li>• Deficiency identification</li>
+                            <li>• Compliance roadmap</li>
+                            <li>• Staff training & follow-up</li>
+                        </ul>
+                        <div class="bg-[#B8860B]/5 p-3 rounded border-l-2 border-[#B8860B] text-xs italic text-gray-600">
+                            Prevents fines and regulatory action through proactive mock surveys mirroring state tools.
+                        </div>
+                    </div>
+
+                    <!-- SBU 5: Tech -->
+                    <div class="bg-white border border-[#B8860B]/20 rounded-lg p-6 hover:shadow-lg transition-all service-card relative overflow-hidden" data-category="tech">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-[#B8860B]"></div>
+                        <span class="inline-block bg-blue-900 text-white text-[10px] font-bold px-2 py-1 rounded mb-3">TECH-01</span>
+                        <h3 class="font-serif text-lg font-bold text-[#1A1A1A] mb-2">Hospital at Home Setup</h3>
+                        <div class="text-2xl font-bold text-[#B8860B] mb-4 pb-4 border-b border-dashed border-gray-200">$2,800 <span class="text-xs font-normal text-gray-400">One-Time</span></div>
+                        <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Includes:</h4>
+                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                            <li>• Equipment installation & WiFi</li>
+                            <li>• Telehealth platform setup</li>
+                            <li>• Remote monitoring integration</li>
+                        </ul>
+                        <div class="bg-[#B8860B]/5 p-3 rounded border-l-2 border-[#B8860B] text-xs italic text-gray-600">
+                            Complete hospital-level monitoring infrastructure for high-acuity home care.
+                        </div>
+                    </div>
+
+                    <!-- SBU 6: Education (Tag as Tech/Edu) -->
+                    <div class="bg-white border border-[#B8860B]/20 rounded-lg p-6 hover:shadow-lg transition-all service-card relative overflow-hidden" data-category="tech">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-[#B8860B]"></div>
+                        <span class="inline-block bg-green-800 text-white text-[10px] font-bold px-2 py-1 rounded mb-3">EDU-01</span>
+                        <h3 class="font-serif text-lg font-bold text-[#1A1A1A] mb-2">AL Manager Prep</h3>
+                        <div class="text-2xl font-bold text-[#B8860B] mb-4 pb-4 border-b border-dashed border-gray-200">$750 <span class="text-xs font-normal text-gray-400">per student</span></div>
+                        <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Includes:</h4>
+                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                            <li>• State licensing curriculum</li>
+                            <li>• Live instructor training</li>
+                            <li>• Certification exam & Guarantee</li>
+                        </ul>
+                        <div class="bg-[#B8860B]/5 p-3 rounded border-l-2 border-[#B8860B] text-xs italic text-gray-600">
+                            Comprehensive preparation for assisted living manager certification compliance.
+                        </div>
+                    </div>
+
+                    <!-- SBU 3: Disease Mgmt -->
+                    <div class="bg-white border border-[#B8860B]/20 rounded-lg p-6 hover:shadow-lg transition-all service-card relative overflow-hidden" data-category="disease">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-[#B8860B]"></div>
+                        <span class="inline-block bg-purple-900 text-white text-[10px] font-bold px-2 py-1 rounded mb-3">PRO-ALZ</span>
+                        <h3 class="font-serif text-lg font-bold text-[#1A1A1A] mb-2">Alzheimer's Protocol</h3>
+                        <div class="text-2xl font-bold text-[#B8860B] mb-4 pb-4 border-b border-dashed border-gray-200">$2,500 <span class="text-xs font-normal text-gray-400">Setup</span></div>
+                        <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Includes:</h4>
+                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                            <li>• Comprehensive assessment</li>
+                            <li>• Home environment retrofit</li>
+                            <li>• Family training program</li>
+                            <li>• Behavior management plan</li>
+                        </ul>
+                        <div class="bg-[#B8860B]/5 p-3 rounded border-l-2 border-[#B8860B] text-xs italic text-gray-600">
+                            Evidence-based environmental design and family training for dementia care.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 4: LEGAL CONTRACTS & PRINTING -->
+            <div id="contracts" class="section-content max-w-5xl mx-auto">
+                <div class="mb-8 border-l-4 border-[#B8860B] pl-6">
+                    <h2 class="text-3xl font-serif font-bold text-[#1A1A1A] mb-2">Legal Contracts</h2>
+                    <p class="text-gray-500 italic text-sm">Printable Templates (Internal Use Only)</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8 no-print">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-[#B8860B] mb-4">Document Repository</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <button onclick="printDocument('doc1')" class="text-left px-4 py-3 bg-gray-50 hover:bg-[#B8860B] hover:text-white transition-colors rounded text-sm font-medium flex justify-between group">
+                            <span>1. B2C Client Service Agreement</span>
+                            <i data-lucide="printer" class="w-4 h-4 opacity-0 group-hover:opacity-100"></i>
+                        </button>
+                        <button onclick="printDocument('doc2')" class="text-left px-4 py-3 bg-gray-50 hover:bg-[#B8860B] hover:text-white transition-colors rounded text-sm font-medium flex justify-between group">
+                            <span>2. B2B Facility Consulting Agreement</span>
+                            <i data-lucide="printer" class="w-4 h-4 opacity-0 group-hover:opacity-100"></i>
+                        </button>
+                        <button onclick="printDocument('doc3')" class="text-left px-4 py-3 bg-gray-50 hover:bg-[#B8860B] hover:text-white transition-colors rounded text-sm font-medium flex justify-between group">
+                            <span>3. HIPAA Release Form</span>
+                            <i data-lucide="printer" class="w-4 h-4 opacity-0 group-hover:opacity-100"></i>
+                        </button>
+                        <button onclick="printDocument('doc4')" class="text-left px-4 py-3 bg-gray-50 hover:bg-[#B8860B] hover:text-white transition-colors rounded text-sm font-medium flex justify-between group">
+                            <span>4. Employment Agreement</span>
+                            <i data-lucide="printer" class="w-4 h-4 opacity-0 group-hover:opacity-100"></i>
+                        </button>
+                         <button onclick="printDocument('doc5')" class="text-left px-4 py-3 bg-gray-50 hover:bg-[#B8860B] hover:text-white transition-colors rounded text-sm font-medium flex justify-between group">
+                            <span>5. Independent Contractor Agreement</span>
+                            <i data-lucide="printer" class="w-4 h-4 opacity-0 group-hover:opacity-100"></i>
+                        </button>
+                        <button onclick="printDocument('doc11')" class="text-left px-4 py-3 bg-gray-50 hover:bg-[#B8860B] hover:text-white transition-colors rounded text-sm font-medium flex justify-between group">
+                            <span>11. Client Waiver & Risk Assumption</span>
+                            <i data-lucide="printer" class="w-4 h-4 opacity-0 group-hover:opacity-100"></i>
+                        </button>
+                    </div>
+                    <div class="mt-4 p-3 bg-yellow-50 text-yellow-800 text-xs rounded border border-yellow-200 flex items-center gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                        <span>Clicking a document will open the system print dialog. The sidebar will be hidden automatically.</span>
+                    </div>
+                </div>
+
+                <!-- HIDDEN CONTRACT CONTENT (Only visible during print/preview) -->
+                <!-- DOC 1 -->
+                <div id="doc1" class="document-wrapper">
+                    <div class="text-logo">NURSE NAVIGATORS PRO</div>
+                    <h1 class="contract-h1">B2C Client Service Agreement</h1>
+                    <div class="contract-subtitle">Advocacy Coordination Services</div>
+                    <p class="contract-p"><strong>AGREEMENT FOR ADVOCACY COORDINATION SERVICES</strong></p>
+                    <p class="contract-p">This Client Service Agreement ("Agreement") is made effective as of __________, 20___ by and between LISTERKEYS LLC d/b/a Nurse Navigators Pro ("NNP") and the undersigned Client.</p>
+                    <hr class="my-6">
+                    <h2 class="contract-h2">ARTICLE 1: SCOPE OF SERVICES</h2>
+                    <p class="contract-p">NNP provides NON-MEDICAL advocacy and coordination services. NNP expressly does NOT provide medical diagnosis, treatment, or hands-on clinical care.</p>
+                    <h2 class="contract-h2">ARTICLE 2: FEES</h2>
+                    <ul class="contract-ul">
+                        <li class="contract-li">Risk Roadmap™: $895 (one-time)</li>
+                        <li class="contract-li">Guardian Partnership™: $1,500/month</li>
+                        <li class="contract-li">Executive Shield™: $3,000/month</li>
+                    </ul>
+                    <div class="signature-block">
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Client Signature</div></div>
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Date</div></div>
+                    </div>
+                </div>
+
+                <!-- DOC 2 -->
+                <div id="doc2" class="document-wrapper">
+                    <div class="text-logo">NURSE NAVIGATORS PRO</div>
+                    <h1 class="contract-h1">B2B Facility Consulting Agreement</h1>
+                    <div class="contract-subtitle">Regulatory Compliance Services</div>
+                    <p class="contract-p"><strong>FACILITY REGULATORY CONSULTING AGREEMENT</strong></p>
+                    <p class="contract-p">Made effective as of __________, 20___ between NNP and [Facility Name].</p>
+                    <h2 class="contract-h2">ARTICLE 1: SERVICES</h2>
+                    <p class="contract-p">Option A: Solstice Audit ($4,500). Option B: Plan of Correction ($5,000+).</p>
+                    <h2 class="contract-h2">ARTICLE 2: INDEMNIFICATION</h2>
+                    <p class="contract-p">Facility indemnifies NNP from claims arising from facility operations and compliance practices.</p>
+                    <div class="signature-block">
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Facility Admin</div></div>
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">NNP Rep</div></div>
+                    </div>
+                </div>
+
+                <!-- DOC 3 -->
+                <div id="doc3" class="document-wrapper">
+                    <div class="text-logo">NURSE NAVIGATORS PRO</div>
+                    <h1 class="contract-h1">HIPAA Release Form</h1>
+                    <div class="contract-subtitle">Authorization for Release of Information</div>
+                    <p class="contract-p">I authorize Nurse Navigators Pro to obtain, receive, use, and disclose my Protected Health Information (PHI) for advocacy coordination.</p>
+                    <div class="signature-block">
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Patient Signature</div></div>
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Date</div></div>
+                    </div>
+                </div>
+
+                <!-- DOC 4 -->
+                <div id="doc4" class="document-wrapper">
+                    <div class="text-logo">NURSE NAVIGATORS PRO</div>
+                    <h1 class="contract-h1">Employment Agreement</h1>
+                    <div class="contract-subtitle">At-Will Employment Contract</div>
+                    <p class="contract-p">This agreement establishes the terms of employment between ListerKeys LLC and the Employee.</p>
+                    <h2 class="contract-h2">RED LINE PROTOCOL</h2>
+                    <p class="contract-p">Employee agrees to strictly adhere to the Red Line Protocol. Providing unlicensed medical advice is grounds for immediate termination.</p>
+                    <div class="signature-block">
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Employee</div></div>
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Date</div></div>
+                    </div>
+                </div>
+                
+                 <!-- DOC 5 -->
+                <div id="doc5" class="document-wrapper">
+                    <div class="text-logo">NURSE NAVIGATORS PRO</div>
+                    <h1 class="contract-h1">Independent Contractor Agreement</h1>
+                    <div class="contract-subtitle">1099 Service Provider</div>
+                    <p class="contract-p">Contractor is an independent entity and not an employee of NNP.</p>
+                    <h2 class="contract-h2">INSURANCE</h2>
+                    <p class="contract-p">Contractor must maintain professional liability insurance of at least $1,000,000.</p>
+                    <div class="signature-block">
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Contractor</div></div>
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Date</div></div>
+                    </div>
+                </div>
+
+                 <!-- DOC 11 -->
+                <div id="doc11" class="document-wrapper">
+                    <div class="text-logo">NURSE NAVIGATORS PRO</div>
+                    <h1 class="contract-h1">Client Waiver</h1>
+                    <div class="contract-subtitle">Assumption of Risk</div>
+                    <p class="contract-p">Client acknowledges that NNP services are advisory only and do not replace licensed medical care.</p>
+                    <div class="signature-block">
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Client</div></div>
+                        <div class="sig-col"><div class="sig-line"></div><div class="sig-label">Date</div></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- STEP 5 (Continued): FINANCIALS -->
+            <div id="financials" class="section-content max-w-6xl mx-auto">
+                <div class="mb-8 border-l-4 border-[#B8860B] pl-6">
+                    <h2 class="text-3xl font-serif font-bold text-[#1A1A1A] mb-2">Financial Projections</h2>
+                    <p class="text-gray-500 italic text-sm">Revenue Models & Growth 2025-2027</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                     <div class="bg-gradient-to-br from-[#1A1A1A] to-[#333] p-6 rounded-lg text-white">
+                        <h4 class="text-[#B8860B] font-bold uppercase text-xs tracking-widest mb-2">Year 1 Target</h4>
+                        <div class="text-3xl font-bold">$614k - $1.06M</div>
+                        <p class="text-xs text-gray-400 mt-2">Market Entry & Acquisition</p>
+                     </div>
+                     <div class="bg-white border border-gray-200 p-6 rounded-lg">
+                        <h4 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-2">Year 2 Target</h4>
+                        <div class="text-3xl font-bold text-[#1A1A1A]">$1.5M - $2.2M</div>
+                        <p class="text-xs text-gray-400 mt-2">Scaling & Optimization</p>
+                     </div>
+                     <div class="bg-white border border-gray-200 p-6 rounded-lg">
+                        <h4 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-2">Year 3 Target</h4>
+                        <div class="text-3xl font-bold text-[#1A1A1A]">$3.0M - $4.2M</div>
+                        <p class="text-xs text-gray-400 mt-2">Market Leadership</p>
+                     </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
+                    <div class="p-6 bg-gray-50 border-b">
+                        <h3 class="font-bold text-[#1A1A1A] uppercase text-sm">Unit Economics by SBU</h3>
+                    </div>
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100 text-gray-600 font-bold uppercase text-xs">
+                            <tr>
+                                <th class="px-6 py-3">SBU</th>
+                                <th class="px-6 py-3">Revenue Source</th>
+                                <th class="px-6 py-3">Gross Margin</th>
+                                <th class="px-6 py-3">Strategy</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 font-bold">Home Care</td>
+                                <td class="px-6 py-4">Hourly ($48-$65)</td>
+                                <td class="px-6 py-4 text-orange-600">35-45%</td>
+                                <td class="px-6 py-4 text-gray-500">Volumetric entry point</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-bold">Governance</td>
+                                <td class="px-6 py-4">Retainer ($1.5k-$12k)</td>
+                                <td class="px-6 py-4 text-green-600">55-75%</td>
+                                <td class="px-6 py-4 text-gray-500">High margin, recurring</td>
+                            </tr>
+                             <tr>
+                                <td class="px-6 py-4 font-bold">B2B Consulting</td>
+                                <td class="px-6 py-4">Project ($4.5k+)</td>
+                                <td class="px-6 py-4 text-green-600">50-65%</td>
+                                <td class="px-6 py-4 text-gray-500">Large ACV contracts</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-bold">Education</td>
+                                <td class="px-6 py-4">Certifications</td>
+                                <td class="px-6 py-4 text-green-600">70-85%</td>
+                                <td class="px-6 py-4 text-gray-500">Scalable, low overhead</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- STEP 5 (Continued): Brand Standards (Retained from Shell) -->
+            <div id="brand" class="section-content max-w-5xl mx-auto">
+                <div class="mb-8 border-l-4 border-[#B8860B] pl-6">
+                     <h2 class="text-3xl font-serif font-bold text-[#1A1A1A] mb-2">Brand Standards</h2>
+                     <p class="text-gray-500 italic text-sm">Visual Identity & Voice</p>
+                </div>
+                
+                 <div class="grid md:grid-cols-2 gap-10 mb-8">
+                        <div class="flex items-center gap-4">
+                            <div class="w-20 h-20 rounded shadow-md border" style="background-color: #B8860B;"></div>
+                            <div>
+                                <p class="font-bold text-sm">Primary Gold (#B8860B)</p>
+                                <p class="text-xs text-gray-500 italic">Expertise, Warmth, & Luxury</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-20 h-20 rounded shadow-md border" style="background-color: #A9A9A9;"></div>
+                            <div>
+                                <p class="font-bold text-sm">Midtone Silver (#A9A9A9)</p>
+                                <p class="text-xs text-gray-500 italic">Trust, Stability, & Sophistication</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-[#1A1A1A] p-8 rounded-xl text-white mb-8 border border-[#B8860B]/30 shadow-2xl">
+                        <h4 class="text-[#B8860B] font-bold uppercase mb-6 tracking-[0.2em] text-sm text-center underline underline-offset-8">The Red Line Language Protocol</h4>
+                        <div class="grid grid-cols-2 gap-6 text-[10px] font-mono leading-loose tracking-wider">
+                            <div class="p-4 border border-red-900 rounded bg-red-950/20 text-red-300">
+                                <p class="font-bold mb-3 text-red-400 border-b border-red-900 pb-1">❌ CLINICAL (AVOID)</p>
+                                <p>Diagnosis</p><p>Assessment</p><p>Treatment</p><p>Prescription</p>
+                            </div>
+                            <div class="p-4 border border-green-900 rounded bg-green-950/20 text-green-300">
+                                <p class="font-bold mb-3 text-green-400 border-b border-green-900 pb-1">✅ STRATEGIC (USE)</p>
+                                <p>Expert Review</p><p>Risk Roadmap</p><p>Protocol</p><p>Recommendations</p>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // STEP 1: LOGIN LOGIC
+        const users = { "admin": "nnp2025", "staff": "care123" };
+        const overlay = document.getElementById('login-overlay');
+        const loginError = document.getElementById('login-error');
+
+        // Check session on load
+        if (sessionStorage.getItem('nnp_session')) {
+            overlay.classList.add('hidden');
+        }
+
+        function checkLogin() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const formContainer = document.querySelector('#login-overlay > div');
+
+            if (users[user] && users[user] === pass) {
+                sessionStorage.setItem('nnp_session', 'active');
+                overlay.classList.add('hidden');
+                lucide.createIcons(); // Refresh icons
+            } else {
+                formContainer.classList.add('shake');
+                loginError.classList.remove('hidden');
+                setTimeout(() => formContainer.classList.remove('shake'), 500);
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('nnp_session');
+            location.reload();
+        }
+
+        // STEP 2 & 5: NAVIGATION LOGIC
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section-content').forEach(el => el.classList.remove('active'));
+            // Remove active nav state
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active-section'));
+
+            // Activate target
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Highlight button
+            const btn = document.getElementById('btn-' + sectionId);
+            if(btn) btn.classList.add('active-section');
+
+            // Refresh icons (sometimes Lucide needs a nudge when unhiding)
+            lucide.createIcons();
+        }
+
+        // STEP 3: FILTER LOGIC
+        function filterServices(category) {
+            const cards = document.querySelectorAll('.service-card');
+            const btns = document.querySelectorAll('.filter-btn');
+
+            // Button Styles
+            btns.forEach(btn => {
+                if(btn.dataset.filter === category) {
+                    btn.classList.add('bg-[#1A1A1A]', 'text-white');
+                    btn.classList.remove('bg-gray-200', 'text-gray-700');
+                } else {
+                    btn.classList.remove('bg-[#1A1A1A]', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+
+            // Card Hiding
+            cards.forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // STEP 4: PRINT LOGIC
+        function printDocument(docId) {
+            // Hide everything via CSS media query, but strictly enable the target ID here
+            const allDocs = document.querySelectorAll('.document-wrapper');
+            allDocs.forEach(doc => doc.classList.remove('print-visible'));
+            
+            const target = document.getElementById(docId);
+            if(target) {
+                target.classList.add('print-visible', 'view-mode');
+                window.print();
+                
+                // Cleanup after print dialog closes (setTimeout needed for browser timing)
+                setTimeout(() => {
+                    target.classList.remove('print-visible', 'view-mode');
+                }, 500);
+            }
+        }
+
+        // Initialize Icons & Default View
+        lucide.createIcons();
+        showSection('dashboard'); // Default landing
+    </script>
+</body>
+</html>
